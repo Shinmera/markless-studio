@@ -15,10 +15,16 @@
   :source-control (:git "https://github.com/Shinmera/markless-studio.git")
   :serial T
   :components ((:file "package")
+               (:file "viewer")
+               (:file "editor")
                (:file "main"))
   :depends-on (:qtools
                :qtcore
                :qtgui
                :cl-markless-plump
                :cl-markless-epub
-               :cl-markless-markdown))
+               :cl-markless-markdown
+               :cl-ppcre)
+  :build-operation "qt-program-op"
+  :build-pathname "markless-studio"
+  :entry-point "markless-studio:start")
