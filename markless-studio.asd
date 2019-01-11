@@ -15,8 +15,10 @@
   :source-control (:git "https://github.com/Shinmera/markless-studio.git")
   :serial T
   :components ((:file "package")
+               (:file "keychords")
                (:file "viewer")
                (:file "editor")
+               (:file "status")
                (:file "main"))
   :depends-on (:qtools
                :qtcore

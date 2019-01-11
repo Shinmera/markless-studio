@@ -16,7 +16,14 @@
       (setf *error-format* format))))
 
 (define-widget main (QMainWindow)
-  ())
+  ((keytable :initform (make-instance 'keychord-table) :accessor keytable)))
+
+(define-initializer (main setup)
+  (q+:install-event-filter *qapplication* main)
+  (make-emacs-keytable main (keytable main)))
+
+(define-finalizer (main teardown)
+  (q+:remove-event-filter *qapplication* main))
 
 (define-subwidget (main split) (q+:make-qsplitter (q+:qt.horizontal) main)
   (setf (q+:central-widget main) split)
@@ -28,6 +35,9 @@
 (define-subwidget (main viewer) (make-instance 'viewer)
   (q+:add-widget split viewer))
 
+(define-subwidget (main status) (make-instance 'status)
+  (setf (q+:status-bar main) status))
+
 (define-slot (main update) ()
   (declare (connected editor (text-changed)))
   (multiple-value-bind (ast conditions) (parse-safely (q+:to-plain-text editor))
@@ -36,6 +46,36 @@
       (setf (content viewer) ast))
     (dolist (condition conditions)
       (markup-condition editor condition))))
+
+(define-override (main event-filter) (_ ev)
+  (declare (ignore _))
+  (qtenumcase (q+:type ev)
+    ((q+:qevent.key-press)
+     (let ((ev (cast "QKeyEvent" ev)))
+       (unless (q+:is-auto-repeat ev)
+         (update keytable (key-event->key ev) :dn))))
+    ((q+:qevent.key-release)
+     (let ((ev (cast "QKeyEvent" ev)))
+       (unless (q+:is-auto-repeat ev)
+         (update keytable (key-event->key ev) :up)))))
+  NIL)
+
+(defun key-event->key (ev)
+  (qtenumcase (q+:key ev)
+    ((q+:qt.key_escape) :escape)
+    ((q+:qt.key_tab) :tab)
+    ((q+:qt.key_backspace) :backspace)
+    ((q+:qt.key_return) :return)
+    ((q+:qt.key_enter) :return)
+    ((q+:qt.key_shift) :shift)
+    ((q+:qt.key_control) :control)
+    ((q+:qt.key_meta) :meta)
+    ((q+:qt.key_alt) :alt)
+    ((q+:qt.key_caps-lock) :capslk)
+    ((q+:qt.key_g) #\g)
+    (T (if (= 1 (length (q+:text ev)))
+           (char (q+:text ev) 0)
+           :?))))
 
 (defun parse-safely (text)
   (let ((conditions ()))
@@ -48,19 +88,59 @@
         (push condition conditions)
         (values NIL (nreverse conditions))))))
 
-(define-menu (main file)
-  (:item ("&Open..." (ctrl o)))
-  (:item ("&Save" (ctrl s)))
-  (:item ("Save &As..." (ctrl alt s)))
+;; FIXME: this
+
+(defmethod open-mess ((main main) (target (eql NIL))))
+
+(defmethod open-mess ((main main) (target (eql T))))
+
+(defmethod open-mess ((main main) (pathname pathname)))
+
+(defmethod save-mess ((main main) (target (eql NIL))))
+
+(defmethod save-mess ((main main) (target (eql T))))
+
+(defmethod save-mess ((main main) (pathname pathname)))
+
+(defmethod export-mess ((main main) (profile (eql NIL))))
+
+(defmethod export-mess ((main main) (profile (eql T))))
+
+;;(defmethod export ((main main) (profile profile)))
+
+(define-menu (main file "&File")
+  (:item "&Open..."
+    (open-mess main NIL))
+  (:item "&Save"
+    (save-mess main T))
+  (:item "Save &As..."
+    (save-mess main NIL))
   (:separator)
-  (:item ("&Export" (ctrl e)))
-  (:item ("Export As..." (ctrl alt e)))
+  (:item "&Export"
+    (export-mess main T))
+  (:item "Export As..."
+    (export-mess main NIL))
   (:separator)
-  (:item ("&Quit" (ctrl q))
+  (:item "&Quit"
     (q+:close main)))
 
-(define-menu (main help)
-  (:item ("&About" (ctrl h))
+(define-menu (main edit "&Edit")
+  (:item "&Undo"
+    (q+:undo editor))
+  (:item "&Redo"
+    (q+:redo editor))
+  (:separator)
+  (:item "&Copy"
+    (q+:copy editor))
+  (:item "Cu&t"
+    (q+:cut editor))
+  (:item "&Paste"
+    (q+:paste editor))
+  (:separator)
+  (:item "&Settings"))
+
+(define-menu (main help "&Help")
+  (:item "&About"
     (let ((studio (asdf:find-system :markless-studio))
           (implementation (asdf:find-system :cl-markless)))
       (with-finalizing ((box (q+:make-qmessagebox main)))
@@ -84,3 +164,21 @@ Lisp Implementation: ~a ~a"
                                     (lisp-implementation-type)
                                     (lisp-implementation-version)))
         (#_exec box)))))
+
+(defun make-emacs-keytable (main &optional (table (make-instance 'keychord-table)))
+  (with-slots-bound (main main)
+    (macrolet ((def (chord &body body)
+                 `(install (make-keychord ,chord (lambda () ,@body)) table)))
+      (def "C-g" (message status "Abort."))
+      (def "C-x C-f" (open-mess main NIL))
+      (def "C-x C-s" (save-mess main T))
+      (def "C-x C-w" (save-mess main NIL))
+      (def "C-x C-c" (q+:close main))
+      (def "C-_" (q+:undo editor))
+      (def "M-:" (prompt status (lambda (string)
+                                  (eval (read-from-string string)))
+                         "Eval:"))
+      (def "C-y" (q+:paste editor))
+      (def "C-w" (q+:cut editor))
+      (def "M-w" (q+:copy editor))
+      )))

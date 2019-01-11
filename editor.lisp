@@ -25,6 +25,9 @@
 (define-subwidget (highlighter code) (q+:make-qtextcharformat)
   (setf (q+:foreground code) (q+:make-qbrush (q+:make-qcolor 250 160 40))))
 
+(define-subwidget (highlighter url) (q+:make-qtextcharformat)
+  (setf (q+:font-underline url) T))
+
 (define-override (highlighter highlight-block) (text)
   (cond ((< (q+:previous-block-state highlighter) 2)
          (cl-ppcre:do-scans (s e rs re "(^(\\[ |- |\\d+\\.|#+ |;+ ))|(\\*\\*|//|__|<-|->|\\\\)" text)
@@ -42,7 +45,9 @@
            (setf (q+:format highlighter) (values s (- e s) embed)))
          (cl-ppcre:do-scans (s e rs re "^(::+).*" text)
            (setf (q+:format highlighter) (values s (- e s) keywords))
-           (setf (q+:current-block-state highlighter) (print (- (aref re 0) (aref rs 0))))))
+           (setf (q+:current-block-state highlighter) (print (- (aref re 0) (aref rs 0)))))
+         (cl-ppcre:do-scans (s e rs re "\\w[\\d\\w+\\-.]*://[\\d\\w$\\-_.+!*'()&,/:;=?@%#\\\\]+" text)
+           (setf (q+:format highlighter) (values s (- e s) url))))
         ((and (= (q+:previous-block-state highlighter) (length text))
               (every (lambda (c) (char= #\: c)) text))
          (setf (q+:format highlighter) (values 0 (length text) keywords))
