@@ -270,6 +270,6 @@
 
 (defun qt-key->key (key modifiers)
   (let ((key (gethash key *key-table* :?)))
-    (if (and (characterp key) (< 0 (logand (q+:qt.shift-modifier) modifiers)))
+    (if (and (characterp key) (< 0 (logand #x02000000 modifiers)))
         (char-upcase key)
         key)))

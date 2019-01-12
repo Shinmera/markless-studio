@@ -6,6 +6,12 @@
 
 (in-package #:org.shirakumo.markless.studio)
 
+(defun map-key (key)
+  (case key
+    (:alt :meta)
+    (:meta :control)
+    (T key)))
+
 (defun parse-key (key)
   (etypecase key
     (character
@@ -13,6 +19,7 @@
        (#\C :control)
        (#\M :meta)
        (#\S :shift)
+       (#\s :super)
        (#\A :alt)
        (#\H :hyper)
        (T key)))
@@ -46,6 +53,7 @@
     (:ctrl (write-char #\C stream))
     (:meta (write-char #\M stream))
     (:shift (write-char #\S stream))
+    (:super (write-char #\s stream))
     (:alt (write-char #\A stream))
     (:hyper (write-char #\H stream))
     (#\C (write-string "\\C" stream))
@@ -53,6 +61,7 @@
     (#\S (write-string "\\S" stream))
     (#\A (write-string "\\A" stream))
     (#\H (write-string "\\H" stream))
+    (#\s (write-string "\\s" stream))
     (T (etypecase key
          (keyword (format stream "<~(~a~)>" key))
          (character (write-char key stream))))))
@@ -79,7 +88,10 @@
                    (#\ 
                     (commit-group))
                    (#\-
-                    (commit-key (read-char stream)))
+                    (let ((next (read-char stream)))
+                      (if (char= next #\\)
+                          (push (string (read-char stream)) group)
+                          (commit-key next))))
                    (#\\
                     (push (string (read-char stream)) group))
                    (T
@@ -141,13 +153,14 @@
    (pressed :initform () :accessor pressed)))
 
 (defmethod update ((table keychord-table) key dir)
-  (when (eq dir :dn)
-    (pushnew key (pressed table)))
-  (loop for cons in (keychords table)
-        for (index . keychord) = cons
-        do (setf (car cons) (process keychord (pressed table) index key dir)))
-  (when (eq dir :up)
-    (setf (pressed table) (delete key (pressed table)))))
+  (let ((key (map-key key)))
+    (when (eq dir :dn)
+      (pushnew key (pressed table)))
+    (loop for cons in (keychords table)
+          for (index . keychord) = cons
+          do (setf (car cons) (process keychord (pressed table) index key dir)))
+    (when (eq dir :up)
+      (setf (pressed table) (delete key (pressed table))))))
 
 (defmethod install ((keychord keychord) (table keychord-table))
   ;; FIXME: check for collisions
