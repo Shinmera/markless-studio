@@ -45,7 +45,7 @@
            (setf (q+:format highlighter) (values s (- e s) embed)))
          (cl-ppcre:do-scans (s e rs re "^(::+).*" text)
            (setf (q+:format highlighter) (values s (- e s) keywords))
-           (setf (q+:current-block-state highlighter) (print (- (aref re 0) (aref rs 0)))))
+           (setf (q+:current-block-state highlighter) (- (aref re 0) (aref rs 0))))
          (cl-ppcre:do-scans (s e rs re "\\w[\\d\\w+\\-.]*://[\\d\\w$\\-_.+!*'()&,/:;=?@%#\\\\]+" text)
            (setf (q+:format highlighter) (values s (- e s) url))))
         ((and (= (q+:previous-block-state highlighter) (length text))
@@ -85,6 +85,10 @@
 (define-initializer (editor setup)
   (setf (q+:font editor) (q+:make-qfont "monospace")))
 
+(define-subwidget (editor error-format) (q+:make-qtextcharformat)
+  (setf (q+:underline-style error-format) (q+:qtextcharformat.wave-underline))
+  (setf (q+:underline-color error-format) (q+:make-qcolor 255 0 0)))
+
 (define-subwidget (editor line-number-area) (make-instance 'line-number-area :editor editor))
 
 (define-subwidget (editor highlighter) (make-instance 'highlighter :editor editor)
@@ -97,8 +101,7 @@
 
 (defmethod clear-conditions ((editor editor))
   ;;(mapcar #'finalize (q+:extra-selections editor))
-  ;;(setf (q+:extra-selections editor) NIL)
-  )
+  (setf (q+:extra-selections editor) NIL))
 
 (defmethod markup-condition ((editor editor) condition))
 
@@ -112,10 +115,8 @@
            (q+:move-position cursor (q+:qtextcursor.next-character) (q+:qtextcursor.move-anchor) (cl-markless:cursor condition))
            (q+:select cursor (q+:qtextcursor.word-under-cursor))))
     (setf (q+:cursor selection) cursor)
-    (setf (q+:format selection) *error-format*)
-    ;; FIXME: upstream
-    ;;(push selection (q+:extra-selections editor))
-    ))
+    (setf (q+:format selection) (slot-value editor 'error-format))
+    (setf (q+:extra-selections editor) (list* selection (q+:extra-selections editor)))))
 
 (define-slot (editor new-block) ((blocks int))
   (declare (connected editor (block-count-changed int)))
