@@ -16,6 +16,7 @@
   :serial T
   :components ((:file "package")
                (:file "keychords")
+               (:file "key-table")
                (:file "viewer")
                (:file "editor")
                (:file "status")

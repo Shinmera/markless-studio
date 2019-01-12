@@ -10,14 +10,14 @@
   (etypecase key
     (character
      (case key
-       (#\C :ctrl)
+       (#\C :control)
        (#\M :meta)
        (#\S :shift)
        (#\A :alt)
        (#\H :hyper)
        (T key)))
     (string
-     (cond ((string-equal key "ctrl") :ctrl)
+     (cond ((string-equal key "ctrl") :control)
            ((string-equal key "meta") :meta)
            ((string-equal key "shift") :shift)
            ((string-equal key "alt") :alt)
@@ -25,16 +25,16 @@
            ((string-equal key "super") :super)
            ((string-equal key "spc") :space)
            ((string-equal key "space") :space)
-           ((string-equal key "pgup") :pgup)
-           ((string-equal key "pgdn") :pgdn)
+           ((string-equal key "pgup") :page-up)
+           ((string-equal key "pgdn") :page-down)
            ((string-equal key "tab") :tab)
-           ((string-equal key "caps") :capslk)
-           ((string-equal key "capslk") :capslk)
+           ((string-equal key "caps") :caps-lock)
+           ((string-equal key "capslk") :caps-lock)
            ((string-equal key "esc") :escape)
            ((string-equal key "escape") :escape)
            ((string-equal key "ret") :return)
            ((string-equal key "return") :return)
-           ((string-equal key "enter" :return))
+           ((string-equal key "enter") :return)
            (T (restart-case (progn (warn "Unknown key sequence ~s" key) :?)
                 (use-value (value)
                   :report "Supply a key value."
@@ -112,26 +112,29 @@
 (defun make-keychord (chord action)
   (make-instance 'keychord :chord chord :action action))
 
-(defmethod process ((keychord keychord) pressed index dir)
-  (let* ((keychord (keychord keychord))
-         (group (aref keychord index)))
+(defmethod process ((keychord keychord) pressed index key dir)
+  (let* ((groups (keychord keychord))
+         (group (aref groups index)))
     (flet ((advance ()
-             (cond ((<= (length keychord) (1+ index))
+             (cond ((<= (length groups) (1+ index))
                     (funcall (action keychord))
                     0)
                    (T
                     (1+ index)))))
       (if (rest group)
-          (if (and (eq :up dir)
-                   (loop for key in group
-                         always (find key pressed)))
-              (advance)
-              0)
-          (if (eq :dn dir)
-              (if (find (first group) pressed)
-                  (advance)
-                  0)
-              index)))))
+          (ecase dir
+            (:dn (if (find key group)
+                     index
+                     0))
+            (:up (if (loop for key in group
+                           always (find key pressed))
+                     (advance)
+                     0)))
+          (ecase dir
+            (:dn (if (find (first group) pressed)
+                     (advance)
+                     0))
+            (:up index))))))
 
 (defclass keychord-table ()
   ((keychords :initarg :keychords :initform () :accessor keychords)
@@ -142,7 +145,7 @@
     (pushnew key (pressed table)))
   (loop for cons in (keychords table)
         for (index . keychord) = cons
-        do (setf (car cons) (process keychord (pressed table) index dir)))
+        do (setf (car cons) (process keychord (pressed table) index key dir)))
   (when (eq dir :up)
     (setf (pressed table) (delete key (pressed table)))))
 
