@@ -62,6 +62,7 @@
     (#\A (write-string "\\A" stream))
     (#\H (write-string "\\H" stream))
     (#\s (write-string "\\s" stream))
+    (#\  (write-string "<spc>" stream))
     (T (etypecase key
          (keyword (format stream "<~(~a~)>" key))
          (character (write-char key stream))))))
