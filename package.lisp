@@ -11,3 +11,8 @@
   ;; main.lisp
   (:export
    #:start))
+
+(unless (find-package '#:org.shirakumo.markless.studio.commands)
+  (make-package '#:markless-studio-commands
+                :nicknames '(#:markless-studio-commands)
+                :use ()))

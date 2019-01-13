@@ -95,10 +95,6 @@
           (get-output-stream-string output))
     (setf (source-file main) pathname)))
 
-(defmethod open-mess ((main main) (target (eql :new)))
-  (setf (source-file main) NIL)
-  (q+:clear (slot-value main 'editor)))
-
 (defmethod save-mess ((main main) (target (eql NIL)))
   (let ((file (open-file :output)))
     (when file (open-mess main file))))
@@ -137,7 +133,7 @@
   (:separator)
   (:item "&Export"
     (export-mess main T))
-  (:item "Export As..."
+  (:item "E&xport As..."
     (export-mess main NIL))
   (:separator)
   (:item "&Quit"
@@ -184,34 +180,22 @@ Lisp Implementation: ~a ~a"
                                     (lisp-implementation-version)))
         (#_exec box)))))
 
-(defun read-safely (string)
-  (with-standard-io-syntax
-    (let ((*package* #.*package*)
-          (*read-eval* NIL))
-      (read-from-string string))))
-
 (defun make-emacs-keytable (main &optional (table (make-instance 'keychord-table)))
   (with-slots-bound (main main)
     (macrolet ((def (chord &body body)
-                 (cond ((and (listp (first body))
-                             (find (car (first body)) '(function quote)))
-                        `(install (make-keychord ,chord ,(first body)) table))
+                 (cond ((symbolp (first body))
+                        `(install (make-keychord ,chord #',(command-name (first body))) table))
                        (T
                         `(install (make-keychord ,chord (lambda () ,@body)) table)))))
-      (def "C-g" (signal 'quit))
-      (def "C-x C-f" (open-mess main NIL))
-      (def "C-x C-\\s" (save-mess main T))
-      (def "C-x C-w" (save-mess main NIL))
-      (def "C-x C-c" (q+:close main))
-      (def "C-x h" (q+:select-all editor))
-      (def "C-x n" (open-mess main :new))
-      (def "C-_" (q+:undo editor))
-      (def "M-x" (prompt status (lambda (string)
-                                  (funcall (read-safely string) main))
-                         "Call:"))
-      (def "M-:" (prompt status (lambda (string)
-                                  (eval (read-safely string)))
-                         "Eval:"))
-      (def "C-y" (q+:paste editor))
-      (def "C-w" (q+:cut editor))
-      (def "M-w" (q+:copy editor)))))
+      (def "C-g" quit)
+      (def "C-x C-f" open-file)
+      (def "C-x C-\\s" save-file)
+      (def "C-x C-w" save-file-as)
+      (def "C-x C-c" exit)
+      (def "C-x h" select-all)
+      (def "C-_" undo)
+      (def "M-x" call)
+      (def "M-:" eval)
+      (def "C-y" paste)
+      (def "C-w" cut)
+      (def "M-w" copy))))
