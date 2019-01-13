@@ -184,7 +184,7 @@ Lisp Implementation: ~a ~a"
   (with-slots-bound (main main)
     (macrolet ((def (chord &body body)
                  (cond ((symbolp (first body))
-                        `(install (make-keychord ,chord #',(command-name (first body))) table))
+                        `(install (make-keychord ,chord ',(command-name (first body))) table))
                        (T
                         `(install (make-keychord ,chord (lambda () ,@body)) table)))))
       (def "C-g" quit)
@@ -193,6 +193,7 @@ Lisp Implementation: ~a ~a"
       (def "C-x C-w" save-file-as)
       (def "C-x C-c" exit)
       (def "C-x h" select-all)
+      (def "C-<space>" start-selection)
       (def "C-_" undo)
       (def "M-x" call)
       (def "M-:" eval)

@@ -30,8 +30,8 @@
            ((string-equal key "alt") :alt)
            ((string-equal key "hyper") :hyper)
            ((string-equal key "super") :super)
-           ((string-equal key "spc") :space)
-           ((string-equal key "space") :space)
+           ((string-equal key "spc") #\ )
+           ((string-equal key "space") #\ )
            ((string-equal key "pgup") :page-up)
            ((string-equal key "pgdn") :page-down)
            ((string-equal key "tab") :tab)
@@ -76,27 +76,28 @@
              (commit-group ()
                (when group
                  (vector-push-extend (nreverse group) ast)
-                 (setf group NIL))))
+                 (setf group NIL)))
+             (parse-next (char)
+               (case char
+                 (#\<
+                  (loop for char = (read-char stream)
+                        until (char= char #\>)
+                        do (write-char char buffer))
+                  (get-output-stream-string buffer))
+                 (#\\
+                  (string (read-char stream)))
+                 (T
+                  char))))
         (loop for char = (read-char stream NIL)
               while char
               do (case char
-                   (#\<
-                    (loop for char = (read-char stream)
-                          until (char= char #\>)
-                          do (write-char char buffer))
-                    (commit-key (get-output-stream-string buffer)))
                    (#\ 
                     (commit-group))
                    (#\-
-                    (let ((next (read-char stream)))
-                      (if (char= next #\\)
-                          (push (string (read-char stream)) group)
-                          (commit-key next))))
-                   (#\\
-                    (push (string (read-char stream)) group))
+                    (commit-key (parse-next (read-char stream))))
                    (T
                     (commit-group)
-                    (commit-key char))))
+                    (commit-key (parse-next char)))))
         (commit-group)
         ast))))
 

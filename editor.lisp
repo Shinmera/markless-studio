@@ -80,7 +80,7 @@
                                (q+:qt.align-right) (princ-to-string (1+ (q+:block-number block)))))))))
 
 (define-widget editor (QPlainTextEdit)
-  ())
+  ((in-selection :initform NIL :accessor in-selection)))
 
 (define-initializer (editor setup)
   (setf (q+:font editor) (q+:make-qfont "monospace")))
@@ -134,3 +134,24 @@
   (call-next-qmethod)
   (let ((r (q+:contents-rect editor)))
     (setf (q+:geometry line-number-area) (q+:make-qrect (q+:left r) (q+:top r) (round (margin editor)) (q+:height r)))))
+
+(define-override (editor key-press-event) (ev)
+  (cond (in-selection
+         (let ((cursor (q+:text-cursor editor)))
+           (qtenumcase (q+:key ev)
+             ((q+:qt.key_left)
+              (q+:move-position cursor (q+:qtextcursor.left) (q+:qtextcursor.keep-anchor))
+              (setf (q+:text-cursor editor) cursor))
+             ((q+:qt.key_right)
+              (q+:move-position cursor (q+:qtextcursor.right) (q+:qtextcursor.keep-anchor))
+              (setf (q+:text-cursor editor) cursor))
+             ((q+:qt.key_up)
+              (q+:move-position cursor (q+:qtextcursor.up) (q+:qtextcursor.keep-anchor))
+              (setf (q+:text-cursor editor) cursor))
+             ((q+:qt.key_down)
+              (q+:move-position cursor (q+:qtextcursor.down) (q+:qtextcursor.keep-anchor))
+              (setf (q+:text-cursor editor) cursor))
+             (T
+              (setf in-selection NIL)
+              (stop-overriding)))))
+        (T (stop-overriding))))

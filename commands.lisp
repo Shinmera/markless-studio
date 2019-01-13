@@ -22,10 +22,11 @@
   (let ((name (command-name name)))
     `(progn
        (export ',name '#:org.shirakumo.markless.studio.commands)
-       (defun ,name (,main)
+       (defun ,name ()
          ,@(when (stringp (first body)) (list (first body)))
-         (with-slots ,slots ,main
-           ,@body)))))
+         (let ((,main *main*))
+           (with-slots ,slots ,main
+             ,@body))))))
 
 (define-editor-command quit (main)
   "Abort the current command."
@@ -80,10 +81,14 @@
   "Copy the current selection from the editor."
   (q+:copy editor))
 
+(define-editor-command start-selection (main editor)
+  "Start a text selection at point."
+  (setf (in-selection editor) T))
+
 (define-editor-command call (main status)
   "Run an editor command."
   (prompt status (lambda (string)
-                   (funcall (read-safely string '#:org.shirakumo.markless.studio.commands) main))
+                   (funcall (read-safely string '#:org.shirakumo.markless.studio.commands)))
           "Call:"))
 
 (define-editor-command eval (main status)
