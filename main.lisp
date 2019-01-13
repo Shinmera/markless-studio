@@ -13,7 +13,12 @@
   (with-main-window (*main* 'main :name "Markless Studio")))
 
 (define-widget main (QMainWindow)
-  ((keytable :initform (make-instance 'keychord-table) :accessor keytable)))
+  ((keytable :initform (make-instance 'keychord-table) :accessor keytable)
+   (source-file :initarg :source-file :initform NIL :accessor source-file)
+   (export-profile :initarg :export-profile :initform NIL :accessor export-profile)))
+
+(defmethod (setf source-file) :after (file (main main))
+  (setf (q+:window-title main) (format NIL "Markless Studio~@[ - ~a~]" file)))
 
 (define-initializer (main setup)
   (setf *main* main)
@@ -57,8 +62,7 @@
       (handler-bind ((quit (lambda (_) (quit status))))
         (let ((ev (cast "QKeyEvent" ev)))
           (unless (q+:is-auto-repeat ev)
-            (update keytable (qt-key->key (q+:key ev) (q+:modifiers ev)) dir))))))
-  NIL)
+            (update keytable (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)))))))
 
 (defun parse-safely (text)
   (let ((conditions ()))
@@ -71,27 +75,59 @@
         (push condition conditions)
         (values NIL (nreverse conditions))))))
 
+(defmethod open-mess ((main main) (target (eql NIL)))
+  (let ((file (open-file :input)))
+    (when file (open-mess main file))))
+
+(defmethod open-mess ((main main) (target (eql T)))
+  (open-mess main (source-file main)))
+
+(defmethod open-mess ((main main) (pathname pathname))
+  (let ((output (make-string-output-stream))
+        (buffer (make-string 4096)))
+    (with-open-file (input pathname :direction :input
+                                    :element-type 'character
+                                    :external-format :utf-8)
+      (loop for read = (read-sequence buffer input)
+            while (< 0 read)
+            do (write-sequence buffer output :end read)))
+    (setf (q+:plain-text (slot-value main 'editor))
+          (get-output-stream-string output))
+    (setf (source-file main) pathname)))
+
+(defmethod open-mess ((main main) (target (eql :new)))
+  (setf (source-file main) NIL)
+  (q+:clear (slot-value main 'editor)))
+
+(defmethod save-mess ((main main) (target (eql NIL)))
+  (let ((file (open-file :output)))
+    (when file (open-mess main file))))
+
+(defmethod save-mess ((main main) (target (eql T)))
+  (save-mess main (source-file main)))
+
+(defmethod save-mess ((main main) (pathname pathname))
+  (with-open-file (output pathname :direction :output
+                                   :element-type 'character
+                                   :external-format :utf-8
+                                   :if-exists :supersede)
+    (write-string (q+:to-plain-text (slot-value main 'editor))
+                  output))
+  (setf (source-file main) pathname))
+
+
 ;; FIXME: this
-
-(defmethod open-mess ((main main) (target (eql NIL))))
-
-(defmethod open-mess ((main main) (target (eql T))))
-
-(defmethod open-mess ((main main) (pathname pathname)))
-
-(defmethod save-mess ((main main) (target (eql NIL))))
-
-(defmethod save-mess ((main main) (target (eql T))))
-
-(defmethod save-mess ((main main) (pathname pathname)))
-
 (defmethod export-mess ((main main) (profile (eql NIL))))
 
-(defmethod export-mess ((main main) (profile (eql T))))
+(defmethod export-mess ((main main) (profile (eql T)))
+  (export-mess main (export-profile main)))
 
-;;(defmethod export ((main main) (profile profile)))
+;;(defmethod export ((main main) (profile profile))
+;;  (setf (export-profile main) profile))
 
 (define-menu (main file "&File")
+  (:item "&New"
+    (open-mess main :new))
   (:item "&Open..."
     (open-mess main NIL))
   (:item "&Save"
@@ -167,6 +203,8 @@ Lisp Implementation: ~a ~a"
       (def "C-x C-\\s" (save-mess main T))
       (def "C-x C-w" (save-mess main NIL))
       (def "C-x C-c" (q+:close main))
+      (def "C-x h" (q+:select-all editor))
+      (def "C-x n" (open-mess main :new))
       (def "C-_" (q+:undo editor))
       (def "M-x" (prompt status (lambda (string)
                                   (funcall (read-safely string) main))

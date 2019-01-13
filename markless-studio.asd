@@ -17,6 +17,7 @@
   :components ((:file "package")
                (:file "keychords")
                (:file "key-table")
+               (:file "file-dialog")
                (:file "viewer")
                (:file "editor")
                (:file "status")

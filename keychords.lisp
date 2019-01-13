@@ -130,13 +130,13 @@
     (flet ((advance ()
              (cond ((<= (length groups) (1+ index))
                     (funcall (action keychord))
-                    0)
+                    (values 0 T))
                    (T
-                    (1+ index)))))
+                    (values (1+ index) T)))))
       (if (rest group)
           (ecase dir
             (:dn (if (find key group)
-                     index
+                     (values index T)
                      0))
             (:up (if (loop for key in group
                            always (find key pressed))
@@ -153,14 +153,19 @@
    (pressed :initform () :accessor pressed)))
 
 (defmethod update ((table keychord-table) key dir)
-  (let ((key (map-key key)))
+  (let ((key (map-key key))
+        (found-match NIL))
     (when (eq dir :dn)
       (pushnew key (pressed table)))
     (loop for cons in (keychords table)
           for (index . keychord) = cons
-          do (setf (car cons) (process keychord (pressed table) index key dir)))
+          for (next-index matched) = (multiple-value-list
+                                      (process keychord (pressed table) index key dir))
+          do (setf (car cons) next-index)
+             (when matched (setf found-match T)))
     (when (eq dir :up)
-      (setf (pressed table) (delete key (pressed table))))))
+      (setf (pressed table) (delete key (pressed table))))
+    found-match))
 
 (defmethod install ((keychord keychord) (table keychord-table))
   ;; FIXME: check for collisions
