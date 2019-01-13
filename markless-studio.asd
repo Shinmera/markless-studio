@@ -28,7 +28,8 @@
                :cl-markless-plump
                :cl-markless-epub
                :cl-markless-markdown
-               :cl-ppcre)
+               :cl-ppcre
+               :cl-who)
   :build-operation "qt-program-op"
   :build-pathname "markless-studio"
   :entry-point "markless-studio:start")

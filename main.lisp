@@ -14,6 +14,7 @@
 
 (define-widget main (QMainWindow)
   ((keytable :initform (make-instance 'keychord-table) :accessor keytable)
+   (keytable-suppressed-p :initform NIL :accessor keytable-suppressed-p)
    (source-file :initarg :source-file :initform NIL :accessor source-file)
    (export-profile :initarg :export-profile :initform NIL :accessor export-profile)))
 
@@ -55,14 +56,19 @@
 
 (define-override (main event-filter) (_ ev)
   (declare (ignore _))
+  (when (and (not (keytable-suppressed-p main))
+             (or (enum-equal (q+:type ev) (q+:qevent.key-press))
+                 (enum-equal (q+:type ev) (q+:qevent.key-release))))
+    (handle-keychord-events main (cast "QKeyEvent" ev))))
+
+(defmethod handle-keychord-events ((main main) ev)
   (let ((dir (qtenumcase (q+:type ev)
                ((q+:qevent.key-press) :dn)
-               ((q+:qevent.key-release) :up))))
-    (when dir
-      (handler-bind ((quit (lambda (_) (quit status))))
-        (let ((ev (cast "QKeyEvent" ev)))
-          (unless (q+:is-auto-repeat ev)
-            (update keytable (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)))))))
+               ((q+:qevent.key-release) :up)
+               (T (error "Wtf")))))
+    (handler-bind ((quit (lambda (_) (quit (slot-value main 'status)))))
+      (unless (q+:is-auto-repeat ev)
+        (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)))))
 
 (defun parse-safely (text)
   (let ((conditions ()))
@@ -155,30 +161,48 @@
   (:item "&Settings"))
 
 (define-menu (main help "&Help")
-  (:item "&About"
-    (let ((studio (asdf:find-system :markless-studio))
-          (implementation (asdf:find-system :cl-markless)))
-      (with-finalizing ((box (q+:make-qmessagebox main)))
-        (setf (q+:window-title box) "About Markless-Studio")
-        (setf (q+:text box) (format NIL "~a<br />
-<br />
-The source code is openly available and licensed under ~a.<br />
-<br />
-Homepage: <a href=\"~a~:*\">~a</a><br />
-Author: ~a<br />
-Version: ~a<br />
-<br />
-CL-Markless Version: ~a<br />
-Lisp Implementation: ~a ~a"
-                                    (asdf:system-description studio)
-                                    (asdf:system-license studio)
-                                    (asdf:system-homepage studio)
-                                    (asdf:system-author studio)
-                                    (asdf:component-version studio)
-                                    (asdf:component-version implementation)
-                                    (lisp-implementation-type)
-                                    (lisp-implementation-version)))
-        (#_exec box)))))
+  (:item "&About" (about))
+  (:item "&Help" (help)))
+
+(defun help ()
+  (q+:qdesktopservices-open-url (q+:make-qurl "https://shinmera.github.io/markless-studio")))
+
+(defun about ()
+  (let ((studio (asdf:find-system :markless-studio))
+        (implementation (asdf:find-system :cl-markless)))
+    (with-finalizing ((box (q+:make-qmessagebox)))
+      (setf (q+:window-title box) "About Markless-Studio")
+      (setf (q+:text box) (cl-who:with-html-output-to-string (_)
+                            (:h1 "Markless Studio")
+                            (:p (cl-who:str (asdf:system-description studio)))
+                            (:p "The source code is openly available and licensed under the "
+                                (cl-who:str (asdf:system-license studio))
+                                " licence.")
+                            (:p "Homepage: " (cl-who:str (asdf:system-homepage studio)) (:br)
+                                "Author: " (cl-who:str (asdf:system-author studio)) (:br)
+                                "Version: " (cl-who:str (asdf:component-version studio)) (:br)
+                                "Cl-Markless: " (cl-who:str (asdf:component-version implementation)) (:br)
+                                "Lisp: " (cl-who:str (lisp-implementation-type))
+                                " " (cl-who:str (lisp-implementation-version)))))
+      (q+:exec box))))
+
+(defun describe-key (key)
+  (with-finalizing ((box (q+:make-qmessagebox)))
+    (setf (q+:window-title box) (with-output-to-string (o)
+                                  (print-keychord (keychord key) o)))
+    (setf (q+:text box) (cl-who:with-html-output-to-string (o)
+                          (:h1 (print-keychord (keychord key) o))
+                          (:p "Is bound to " (cl-who:str (action key)) ".")
+                          (:p (cl-who:str (documentation (action key) 'cl:function)))))
+    (q+:exec box)))
+
+(defun describe-command (command)
+  (with-finalizing ((box (q+:make-qmessagebox)))
+    (setf (q+:window-title box) (princ-to-string command))
+    (setf (q+:text box) (cl-who:with-html-output-to-string (_)
+                          (:h1 (cl-who:str command))
+                          (:p (cl-who:str (documentation command 'cl:function)))))
+    (q+:exec box)))
 
 (defun make-emacs-keytable (main &optional (table (make-instance 'keychord-table)))
   (with-slots-bound (main main)
@@ -199,4 +223,8 @@ Lisp Implementation: ~a ~a"
       (def "M-:" eval)
       (def "C-y" paste)
       (def "C-w" cut)
-      (def "M-w" copy))))
+      (def "M-w" copy)
+      (def "C-h a" show-about)
+      (def "C-h h" show-help)
+      (def "C-h k" describe-key)
+      (def "C-h c" describe-command))))

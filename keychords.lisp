@@ -50,7 +50,7 @@
 
 (defun print-key (key stream)
   (case key
-    (:ctrl (write-char #\C stream))
+    (:control (write-char #\C stream))
     (:meta (write-char #\M stream))
     (:shift (write-char #\S stream))
     (:super (write-char #\s stream))
@@ -109,6 +109,12 @@
                     (when rest (write-char #\- stream)))
            (when (< (1+ i) (length keychord))
              (write-char #\  stream))))
+
+(defmethod keychord= ((a vector) (b vector))
+  (and (= (length a) (length b))
+       (loop for ai across a
+             for bi across b
+             always (equal ai bi))))
 
 (defclass keychord ()
   ((keychord :initform #() :reader keychord)
@@ -175,3 +181,11 @@
 
 (defmethod uninstall ((keychord keychord) (table keychord-table))
   (setf (keychords table) (delete keychord (keychords table) :key #'cdr)))
+
+(defmethod find-keychord ((string string) (table keychord-table))
+  (find-keychord (parse-keychord string) table))
+
+(defmethod find-keychord ((vector vector) (table keychord-table))
+  (loop for (_ . keychord) in (keychords table)
+        when (keychord= vector (keychord keychord))
+        return keychord))

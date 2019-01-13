@@ -18,7 +18,7 @@
 (defun command-name (name)
   (intern (string name) '#:org.shirakumo.markless.studio.commands))
 
-(defmacro define-editor-command (name (main &rest slots) &body body)
+(defmacro define-editor-command (name (&optional (main (gensym "MAIN")) &rest slots) &body body)
   (let ((name (command-name name)))
     `(progn
        (export ',name '#:org.shirakumo.markless.studio.commands)
@@ -28,7 +28,7 @@
            (with-slots ,slots ,main
              ,@body))))))
 
-(define-editor-command quit (main)
+(define-editor-command quit ()
   "Abort the current command."
   (signal 'quit))
 
@@ -87,11 +87,34 @@
 
 (define-editor-command call (main status)
   "Run an editor command."
-  (prompt status (lambda (string)
-                   (funcall (read-safely string '#:org.shirakumo.markless.studio.commands)))
-          "Call:"))
+  (with-prompt (string status "Call:")
+    (funcall (read-safely string '#:org.shirakumo.markless.studio.commands))))
 
 (define-editor-command eval (main status)
-  (prompt status (lambda (string)
-                   (eval (read-safely string)))
-          "Eval:"))
+  "Evaluate a lisp form."
+  (with-prompt (string status "Eval:")
+    (eval (read-safely string))))
+
+(define-editor-command show-about ()
+  "Show the about dialog."
+  (about))
+
+(define-editor-command show-help ()
+  "Show the help document."
+  (help))
+
+(define-editor-command describe-key (main status keytable)
+  "Show information about a keybinding."
+  (with-prompt (string status "Keychord:")
+    (let ((keychord (find-keychord string keytable)))
+      (if keychord
+          (describe-key keychord)
+          (message status "The keychord ~a is not bound." string)))))
+
+(define-editor-command describe-command (main status)
+  "Show information about an editor command."
+  (with-prompt (string status "Command:")
+    (let ((command (read-safely string '#:org.shirakumo.markless.studio.commands)))
+      (if (fboundp command)
+          (describe-command command)
+          (message status "The command ~a is not defined." string)))))
