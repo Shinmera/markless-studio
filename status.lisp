@@ -31,14 +31,12 @@
 (defmethod (setf action) :after ((null null) (status status))
   (let ((input (slot-value status 'input)))
     (q+:remove-widget status input)
-    (q+:hide input)
-    (setf (keytable-suppressed-p *main*) NIL)))
+    (q+:hide input)))
 
 (defmethod (setf action) :after (action (status status))
   (let ((input (slot-value status 'input)))
     (q+:add-widget status input 1)
-    (q+:show input)
-    (setf (keytable-suppressed-p *main*) T)))
+    (q+:show input)))
 
 (defmethod message ((status status) control &rest args)
   (q+:show-message status (apply #'format NIL control args)))

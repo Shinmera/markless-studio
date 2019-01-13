@@ -56,11 +56,14 @@
 
 (define-override (main event-filter) (_ ev)
   (declare (ignore _))
-  ;; FIXME: Suppression also suppresses C-g...
   (when (and (not (keytable-suppressed-p main))
              (or (enum-equal (q+:type ev) (q+:qevent.key-press))
                  (enum-equal (q+:type ev) (q+:qevent.key-release))))
     (handle-keychord-events main (cast "QKeyEvent" ev))))
+
+(defun find-any (items sequence)
+  (loop for item in sequence
+        thereis (find item items)))
 
 (defmethod handle-keychord-events ((main main) ev)
   (let ((dir (qtenumcase (q+:type ev)
@@ -69,7 +72,8 @@
                (T (error "Wtf")))))
     (handler-bind ((quit (lambda (_) (quit (slot-value main 'status)))))
       (unless (q+:is-auto-repeat ev)
-        (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)))))
+        (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)
+        (find-any '(:control :alt :hyper :meta :super) (pressed (keytable main)))))))
 
 (defun parse-safely (text)
   (let ((conditions ()))
