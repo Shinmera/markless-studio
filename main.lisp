@@ -56,6 +56,7 @@
 
 (define-override (main event-filter) (_ ev)
   (declare (ignore _))
+  ;; FIXME: Suppression also suppresses C-g...
   (when (and (not (keytable-suppressed-p main))
              (or (enum-equal (q+:type ev) (q+:qevent.key-press))
                  (enum-equal (q+:type ev) (q+:qevent.key-release))))
