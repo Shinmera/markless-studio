@@ -66,6 +66,10 @@
       (setf (q+:tool-tip input) description)
       input)))
 
+(defmethod update-profile ((editor export-editor))
+  ;; FIXME: this
+  )
+
 (define-widget export-dialog (QDialog)
   ())
 
@@ -94,7 +98,9 @@
 
 (define-slot (export-dialog ok) ()
   (declare (connected ok (clicked)))
-  (q+:accept export-dialog))
+  (unless (null-qobject-p (q+:widget scroll))
+    (update-profile (q+:widget scroll))
+    (q+:accept export-dialog)))
 
 (define-slot (export-dialog cancel) ()
   (declare (connected cancel (clicked)))
@@ -109,3 +115,10 @@
                     (error "WTF? ~s ~s" string (list-export-profiles)))))
     (finalize (q+:widget scroll))
     (setf (q+:widget scroll) (make-instance 'export-editor :profile class))))
+
+(defmethod generate-profile)
+
+(defun open-export-profile ()
+  (let ((dialog (make-instance 'export-dialog)))
+    (when (= 0 (q+:exec dialog))
+      (profile (q+:widget (slot-value dialog 'scroll))))))

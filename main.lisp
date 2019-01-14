@@ -122,9 +122,9 @@
                   output))
   (setf (source-file main) pathname))
 
-
-;; FIXME: this
-(defmethod export-mess ((main main) (profile (eql NIL))))
+(defmethod export-mess ((main main) (profile (eql NIL)))
+  (let ((profile (open-export-profile)))
+    (when profile (export-mess main profile))))
 
 (defmethod export-mess ((main main) (profile (eql T)))
   (export-mess main (export-profile main)))
