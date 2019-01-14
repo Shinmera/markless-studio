@@ -14,5 +14,5 @@
 
 (unless (find-package '#:org.shirakumo.markless.studio.commands)
   (make-package '#:markless-studio-commands
-                :nicknames '(#:markless-studio-commands)
+                :nicknames '(#:org.shirakumo.markless.studio.commands)
                 :use ()))

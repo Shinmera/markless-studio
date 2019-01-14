@@ -18,9 +18,12 @@
                (:file "keychords")
                (:file "key-table")
                (:file "file-dialog")
+               (:file "export")
+               (:file "export-editor")
                (:file "viewer")
                (:file "editor")
                (:file "status")
+               (:file "commands")
                (:file "main"))
   :depends-on (:qtools
                :qtcore
@@ -29,7 +32,8 @@
                :cl-markless-epub
                :cl-markless-markdown
                :cl-ppcre
-               :cl-who)
+               :cl-who
+               :closer-mop)
   :build-operation "qt-program-op"
   :build-pathname "markless-studio"
   :entry-point "markless-studio:start")

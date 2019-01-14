@@ -15,8 +15,9 @@
           (*read-eval* NIL))
       (read-from-string string))))
 
-(defun command-name (name)
-  (intern (string name) '#:org.shirakumo.markless.studio.commands))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun command-name (name)
+    (intern (string name) '#:org.shirakumo.markless.studio.commands)))
 
 (defmacro define-editor-command (name (&optional (main (gensym "MAIN")) &rest slots) &body body)
   (let ((name (command-name name)))

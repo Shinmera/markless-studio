@@ -72,8 +72,8 @@
                (T (error "Wtf")))))
     (handler-bind ((quit (lambda (_) (quit (slot-value main 'status)))))
       (unless (q+:is-auto-repeat ev)
-        (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir)
-        (find-any '(:control :alt :hyper :meta :super) (pressed (keytable main)))))))
+        (prog1 (find-any '(:control :alt :hyper :meta :super) (pressed (keytable main)))
+          (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir))))))
 
 (defun parse-safely (text)
   (let ((conditions ()))
@@ -129,8 +129,9 @@
 (defmethod export-mess ((main main) (profile (eql T)))
   (export-mess main (export-profile main)))
 
-;;(defmethod export ((main main) (profile profile))
-;;  (setf (export-profile main) profile))
+(defmethod export-mess ((main main) (profile export-profile))
+  (setf (export-profile main) profile)
+  (export-mess (q+:to-plain-text (slot-value main 'editor)) profile))
 
 (define-menu (main file "&File")
   (:item "&New"
