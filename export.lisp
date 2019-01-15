@@ -57,6 +57,8 @@
    (cl-markless-epub:if-exists :initform :supersede))
   (:documentation "EPUB files for e-readers."))
 
+(defmethod profile-format ((profile epub-export-profile)) profile)
+
 (defmethod label ((_ epub-export-profile)) "EPUB")
 
 (defmethod profile-properties append ((profile epub-export-profile))
@@ -66,13 +68,31 @@
     cl-markless-epub:cover
     cl-markless-epub:stylesheet))
 
+(defvar *content*)
+
 (defclass html-export-profile (export-profile cl-markless-plump:plump)
   ((target :type (file :output "html" "HTML files"))
-   (template :initarg :template :initform NIL :type (or null (file :input "ctml" "Clip templates"))
+   (template :initarg :template :initform NIL :accessor template :type (or null (file :input "ctml" "Clip templates"))
              :documentation "A Clip HTML template to insert the contents into."))
   (:documentation "HTML files for web publishing."))
 
 (defmethod label ((_ html-export-profile)) "HTML")
+
+(defmethod profile-format ((profile html-export-profile))
+  (if (template profile)
+      profile
+      'cl-markless-plump:plump))
+
+(defmethod cl-markless:output-component ((component cl-markless-components:component) (target pathname) (format html-export-profile))
+  (let ((*content* component)
+        (plump:*tag-dispatchers* plump:*html-tags*))
+    (with-open-file (stream target :direction :output
+                                   :element-type 'character
+                                   :if-exists :supersede)
+      (plump:serialize (clip:process (template format)) stream))))
+
+(clip:define-tag-processor "document" (node)
+  (cl-markless:output *content* :target node :format 'cl-markless-plump:plump))
 
 (defmethod profile-properties append ((profile html-export-profile))
   '(template))

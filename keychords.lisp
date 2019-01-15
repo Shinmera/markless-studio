@@ -42,6 +42,7 @@
            ((string-equal key "ret") :return)
            ((string-equal key "return") :return)
            ((string-equal key "enter") :return)
+           ((= 1 (length key)) (char key 0))
            (T (restart-case (progn (warn "Unknown key sequence ~s" key) :?)
                 (use-value (value)
                   :report "Supply a key value."

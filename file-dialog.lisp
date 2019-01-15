@@ -70,7 +70,9 @@
     (when value (setf (value file-input) value))))
 
 (defmethod value ((file-input file-input))
-  (uiop:parse-native-namestring (q+:text (slot-value file-input 'path))))
+  (let ((text (q+:text (slot-value file-input 'path))))
+    (when (string/= "" text)
+      (uiop:parse-native-namestring text))))
 
 (defmethod (setf value) (value (file-input file-input))
   (setf (q+:text (slot-value file-input 'path)) (uiop:native-namestring value)))

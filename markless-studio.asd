@@ -28,6 +28,7 @@
   :depends-on (:qtools
                :qtcore
                :qtgui
+               :clip
                :cl-markless-plump
                :cl-markless-epub
                :cl-markless-markdown

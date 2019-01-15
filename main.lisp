@@ -222,6 +222,8 @@
       (def "C-x C-\\s" save-file)
       (def "C-x C-w" save-file-as)
       (def "C-x C-c" exit)
+      (def "C-x C-e" export)
+      (def "C-x C-M-e" export-as)
       (def "C-x h" select-all)
       (def "C-<space>" start-selection)
       (def "C-_" undo)
@@ -234,3 +236,14 @@
       (def "C-h h" show-help)
       (def "C-h k" describe-key)
       (def "C-h c" describe-command))))
+
+;; FIXME: key listing
+;; FIXME: user config file
+
+(defun config-file ()
+  #+(or windows win32 mswindows)
+  (merge-pathnames (make-pathname :name "config" :type "lisp" :directory '(:relative "AppData" "Local" "markless-studio"))
+                   (user-homedir-pathname))
+  #-(or windows win32 mswindows)
+  (merge-pathnames (make-pathname :name "config" :type "lisp" :directory '(:relative ".config" "markless-studio"))
+                   (user-homedir-pathname)))

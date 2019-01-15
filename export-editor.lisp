@@ -16,7 +16,8 @@
       type))
 
 (define-widget export-editor (QWidget)
-  ((profile :accessor profile)))
+  ((profile :accessor profile)
+   (slot-inputs :initform () :accessor slot-inputs)))
 
 (defmethod initialize-instance ((editor export-editor) &key profile)
   (setf (profile editor)
@@ -32,16 +33,19 @@
           for slot = (or (find slot-name (c2mop:class-slots class) :key #'c2mop:slot-definition-name)
                          (error "No slot found for property ~s in class ~a" slot-name class))
           for input = (make-input-for-slot export-editor slot profile)
-          do (q+:add-row layout (string-capitalize slot-name) input))))
+          do (q+:add-row layout (string-capitalize slot-name) input)
+             (push (cons slot-name input) slot-inputs))))
 
 (defun universal-to-unix-msecs (universal)
   (* (- universal (encode-universal-time 0 0 0 1 1 1970 0)) 1000))
+
+(defun unix-msecs-to-universal (unix)
+  (+ (/ unix 1000) (encode-universal-time 0 0 0 1 1 1970 0)))
 
 (defun make-input-for-slot (parent slot instance)
   (let ((value (slot-value instance (c2mop:slot-definition-name slot)))
         (type (strip-or-null-type (c2mop:slot-definition-type slot)))
         (description (documentation slot T)))
-    (print type)
     (let ((input (cond ((and (listp type) (eql (first type) 'date))
                         (q+:make-qdatetimeedit (if value
                                                    (q+:qdatetime-from-msecs-since-epoch
@@ -66,9 +70,24 @@
       (setf (q+:tool-tip input) description)
       input)))
 
+(defun coerce-to-lisp (value)
+  (typecase value
+    (qobject
+     (qtypecase value
+       ("QDateTime"
+        (unix-msecs-to-universal (q+:to-msecs-since-epoch value)))
+       (T
+        (error "Don't know how to coerce ~a to a lisp value." value))))
+    (string
+     (when (string/= "" value)
+       value))
+    (T value)))
+
 (defmethod update-profile ((editor export-editor))
-  ;; FIXME: this
-  )
+  (loop for (slot . input) in (slot-inputs editor)
+        for value = (value input)
+        do (setf (slot-value (profile editor) slot)
+                 (coerce-to-lisp value))))
 
 (define-widget export-dialog (QDialog)
   ())
@@ -116,9 +135,9 @@
     (finalize (q+:widget scroll))
     (setf (q+:widget scroll) (make-instance 'export-editor :profile class))))
 
-(defmethod generate-profile)
-
 (defun open-export-profile ()
   (let ((dialog (make-instance 'export-dialog)))
-    (when (= 0 (q+:exec dialog))
-      (profile (q+:widget (slot-value dialog 'scroll))))))
+    (when (< 0 (q+:exec dialog))
+      (let ((widget (q+:widget (slot-value dialog 'scroll))))
+        (unless (null-qobject-p widget)
+          (profile widget))))))
