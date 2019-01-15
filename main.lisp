@@ -69,11 +69,15 @@
   (let ((dir (qtenumcase (q+:type ev)
                ((q+:qevent.key-press) :dn)
                ((q+:qevent.key-release) :up)
-               (T (error "Wtf")))))
-    (handler-bind ((quit (lambda (_) (quit (slot-value main 'status)))))
+               (T (error "Wtf"))))
+        (status (slot-value main 'status)))
+    (handler-bind ((quit (lambda (_) (quit status))))
       (unless (q+:is-auto-repeat ev)
         (prog1 (find-any '(:control :alt :hyper :meta :super) (pressed (keytable main)))
-          (update (keytable main) (qt-key->key (q+:key ev) (q+:modifiers ev)) dir))))))
+          (let* ((key (qt-key->key (q+:key ev) (q+:modifiers ev)))
+                 (matched (update-keychords (keytable main) key dir)))
+            (loop for keychord in matched
+                  thereis (maybe-invoke keychord))))))))
 
 (defun parse-safely (text)
   (let ((conditions ()))

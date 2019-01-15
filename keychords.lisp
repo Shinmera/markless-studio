@@ -10,6 +10,7 @@
   (case key
     (:alt :meta)
     (:meta :control)
+    (#\< :meta)
     (T key)))
 
 (defun parse-key (key)
@@ -104,12 +105,19 @@
         ast))))
 
 (defun print-keychord (keychord stream)
-  (loop for i from 0 below (length keychord)
-        do (loop for (key . rest) on (aref keychord i)
-                 do (print-key key stream)
-                    (when rest (write-char #\- stream)))
-           (when (< (1+ i) (length keychord))
-             (write-char #\  stream))))
+  (etypecase stream
+    (stream
+     (loop for i from 0 below (length keychord)
+           do (loop for (key . rest) on (aref keychord i)
+                    do (print-key key stream)
+                       (when rest (write-char #\- stream)))
+              (when (< (1+ i) (length keychord))
+                (write-char #\  stream))))
+    ((eql NIL)
+     (with-output-to-string (stream)
+       (print-keychord keychord stream)))
+    ((eql T)
+     (print-keychord keychord *standard-output*))))
 
 (defmethod keychord= ((a vector) (b vector))
   (and (= (length a) (length b))
@@ -118,75 +126,86 @@
              always (equal ai bi))))
 
 (defclass keychord ()
-  ((keychord :initform #() :reader keychord)
+  ((index :initform 0 :accessor index)
+   (groups :initform #() :reader groups)
    (action :initarg :action :reader action)))
 
 (defmethod initialize-instance :after ((keychord keychord) &key chord)
-  (setf (slot-value keychord 'keychord) (etypecase chord
-                                          (string (parse-keychord chord))
-                                          (vector chord))))
+  (setf (slot-value keychord 'groups) (etypecase chord
+                                        (string (parse-keychord chord))
+                                        (vector chord))))
 
 (defmethod print-object ((keychord keychord) stream)
   (print-unreadable-object (keychord stream :type T)
-    (print-keychord (keychord keychord) stream)))
+    (print-keychord (groups keychord) stream)))
 
 (defun make-keychord (chord action)
   (make-instance 'keychord :chord chord :action action))
 
-(defmethod process ((keychord keychord) pressed index key dir)
-  (let* ((groups (keychord keychord))
-         (group (aref groups index)))
-    (flet ((advance ()
-             (cond ((<= (length groups) (1+ index))
-                    (funcall (action keychord))
-                    (values 0 T))
-                   (T
-                    (values (1+ index) T)))))
-      (if (rest group)
-          (ecase dir
-            (:dn (if (find key group)
-                     (values index T)
-                     0))
-            (:up (if (loop for key in group
-                           always (find key pressed))
-                     (advance)
-                     0)))
-          (ecase dir
-            (:dn (if (find (first group) pressed)
-                     (advance)
-                     0))
-            (:up index))))))
+(defmethod update-keychord ((keychord keychord) pressed key dir)
+  (let* ((index (index keychord))
+         (group (aref (groups keychord) index)))
+    (setf (index keychord)
+          (if (rest group)
+              (ecase dir
+                (:dn (if (find key group)
+                         (1+ index)
+                         0))
+                (:up (if (loop for key in group
+                               always (find key pressed))
+                         (1+ index)
+                         0)))
+              (ecase dir
+                (:dn (if (find (first group) pressed)
+                         (1+ index)
+                         0))
+                (:up index))))
+    (< 0 (index keychord))))
+
+(defmethod complete-p ((keychord keychord))
+  (<= (length (groups keychord)) (index keychord)))
+
+(defmethod invoke ((keychord keychord) &rest args)
+  (apply (action keychord) args))
+
+(defmethod maybe-invoke ((keychord keychord) &rest args)
+  (when (complete-p keychord)
+    (apply #'invoke keychord args)
+    (reset keychord)))
+
+(defmethod reset ((keychord keychord))
+  (setf (index keychord) 0)
+  keychord)
 
 (defclass keychord-table ()
   ((keychords :initarg :keychords :initform () :accessor keychords)
    (pressed :initform () :accessor pressed)))
 
-(defmethod update ((table keychord-table) key dir)
-  (let ((key (map-key key))
-        (found-match NIL))
-    (when (eq dir :dn)
-      (pushnew key (pressed table)))
-    (loop for cons in (keychords table)
-          for (index . keychord) = cons
-          for (next-index matched) = (multiple-value-list
-                                      (process keychord (pressed table) index key dir))
-          do (setf (car cons) next-index)
-             (when matched (setf found-match T)))
-    (when (eq dir :up)
-      (setf (pressed table) (delete key (pressed table))))
-    found-match))
+(defmethod update-keychords ((table keychord-table) key dir)
+  (let ((key (map-key key)))
+    (loop initially (when (eq dir :dn)
+                      (pushnew key (pressed table)))
+          for keychord in (keychords table)
+          for matched = (update-keychord (pressed table) key dir)
+          when matched collect keychord
+          finally (when (eq dir :up)
+                    (setf (pressed table) (delete key (pressed table)))))))
+
+(defmethod reset ((table keychord-table))
+  (mapc #'reset (keychords table))
+  table)
 
 (defmethod install ((keychord keychord) (table keychord-table))
   ;; FIXME: check for collisions
-  (push (cons 0 keychord) (keychords table)))
+  (push keychord (keychords table)))
 
 (defmethod uninstall ((keychord keychord) (table keychord-table))
-  (setf (keychords table) (delete keychord (keychords table) :key #'cdr)))
+  (setf (keychords table) (delete keychord (keychords table))))
 
 (defmethod find-keychord ((string string) (table keychord-table))
   (find-keychord (parse-keychord string) table))
 
 (defmethod find-keychord ((vector vector) (table keychord-table))
-  (loop for (_ . keychord) in (keychords table)
+  (loop for keychord in (keychords table)
         when (keychord= vector (keychord keychord))
         return keychord))

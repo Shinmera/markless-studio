@@ -23,11 +23,10 @@
   (let ((name (command-name name)))
     `(progn
        (export ',name '#:org.shirakumo.markless.studio.commands)
-       (defun ,name ()
+       (defun ,name (,main)
          ,@(when (stringp (first body)) (list (first body)))
-         (let ((,main *main*))
-           (with-slots ,slots ,main
-             ,@body))))))
+         (with-slots ,slots ,main
+           ,@body)))))
 
 (define-editor-command quit ()
   "Abort the current command."
@@ -89,7 +88,7 @@
 (define-editor-command call (main status)
   "Run an editor command."
   (with-prompt (string status "Call:")
-    (funcall (read-safely string '#:org.shirakumo.markless.studio.commands))))
+    (funcall (read-safely string '#:org.shirakumo.markless.studio.commands) main)))
 
 (define-editor-command eval (main status)
   "Evaluate a lisp form."
