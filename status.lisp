@@ -39,7 +39,9 @@
     (q+:show input)))
 
 (defmethod message ((status status) control &rest args)
-  (q+:show-message status (apply #'format NIL control args)))
+  (if control
+      (q+:show-message status (apply #'format NIL control args))
+      (q+:clear-message status)))
 
 (defmethod prompt ((status status) action control &rest args)
   (q+:clear-message status)

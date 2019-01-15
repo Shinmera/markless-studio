@@ -85,6 +85,42 @@
   "Start a text selection at point."
   (setf (in-selection editor) T))
 
+(define-editor-command forward-char (main editor)
+  "Move the cursor forward by one character."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.next-character))
+    (setf (q+:text-cursor editor) cursor)))
+
+(define-editor-command backward-char (main editor)
+  "Move the cursor backward by one character."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.previous-character))
+    (setf (q+:text-cursor editor) cursor)))
+
+(define-editor-command forward-word (main editor)
+  "Move the cursor forward by one word."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.next-word))
+    (setf (q+:text-cursor editor) cursor)))
+
+(define-editor-command backward-word (main editor)
+  "Move the cursor backward by one word."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.previous-word))
+    (setf (q+:text-cursor editor) cursor)))
+
+(define-editor-command beginning (main editor)
+  "Move the cursor to the beginning of the document."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.start))
+    (setf (q+:text-cursor editor) cursor)))
+
+(define-editor-command end (main editor)
+  "Move the cursor to the end of the document."
+  (let ((cursor (q+:text-cursor editor)))
+    (q+:move-position cursor (q+:qtextcursor.end))
+    (setf (q+:text-cursor editor) cursor)))
+
 (define-editor-command call (main status)
   "Run an editor command."
   (with-prompt (string status "Call:")

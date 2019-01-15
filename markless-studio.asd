@@ -24,6 +24,7 @@
                (:file "editor")
                (:file "status")
                (:file "commands")
+               (:file "config")
                (:file "main"))
   :depends-on (:qtools
                :qtcore
