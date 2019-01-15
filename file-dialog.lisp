@@ -13,9 +13,7 @@
   ())
 
 (defmethod initialize-instance :after ((file-dialog file-dialog) &key direction file-type directory)
-  (let* ((file-type (or file-type '("mess" . "Markless")))
-         (type (if (consp file-type) (car file-type) file-type))
-         (label (if (consp file-type) (cdr file-type) (format NIL "~@(~a~)" type))))
+  (let ((file-type (or file-type '(("mess" "Markless")))))
     (setf (q+:accept-mode file-dialog)
           (ecase direction
             ((NIL :input) (q+:qfiledialog.accept-open))
@@ -25,9 +23,10 @@
             ((NIL :input) (q+:qfiledialog.existing-file))
             (:output (q+:qfiledialog.any-file))))
     (setf (q+:view-mode file-dialog) (q+:qfiledialog.detail))
-    (setf (q+:name-filters file-dialog) (list (format NIL "~a files (*.~a)" label type)
-                                              "Any files (*)"))
-    (setf (q+:default-suffix file-dialog) type)
+    (setf (q+:name-filters file-dialog) (append (loop for (type name) in file-type
+                                                      collect (format NIL "~a files (*.~a)" name type))
+                                                (list "Any files (*)")))
+    (setf (q+:default-suffix file-dialog) (caar file-type))
     (setf (q+:directory file-dialog) (uiop:native-namestring (or directory *last-directory*)))))
 
 (defun open-file (direction &rest args &key file-type directory)

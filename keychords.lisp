@@ -160,9 +160,12 @@
 
 (defmethod keychord= ((a vector) (b vector))
   (and (= (length a) (length b))
-       (loop for ai across a
-             for bi across b
-             always (equal ai bi))))
+       (keychord-prefix-p a b)))
+
+(defun keychord-prefix-p (a b)
+  (loop for ai across a
+        for bi across b
+        always (and (subsetp ai bi) (subsetp bi ai))))
 
 (defclass keychord ()
   ((index :initform 0 :accessor index)
@@ -176,8 +179,7 @@
 
 (defmethod print-object ((keychord keychord) stream)
   (print-unreadable-object (keychord stream :type T)
-    (print-keychord (groups keychord) stream)
-    (format stream " ~d" (index keychord))))
+    (print-keychord (groups keychord) stream)))
 
 (defun make-keychord (chord action)
   (make-instance 'keychord :chord chord :action action))
@@ -241,7 +243,11 @@
   table)
 
 (defmethod install ((keychord keychord) (table keychord-table))
-  ;; FIXME: check for collisions
+  (loop for other in (keychords table)
+        when (keychord-prefix-p (groups other) (groups keychord))
+        do (error "Cannot install ~a as it would clobber ~a."
+                  keychord other))
+  (reset keychord)
   (push keychord (keychords table)))
 
 (defmethod uninstall ((keychord keychord) (table keychord-table))

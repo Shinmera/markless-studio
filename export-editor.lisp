@@ -36,26 +36,21 @@
           do (q+:add-row layout (string-capitalize slot-name) input)
              (push (cons slot-name input) slot-inputs))))
 
-(defun universal-to-unix-msecs (universal)
-  (* (- universal (encode-universal-time 0 0 0 1 1 1970 0)) 1000))
-
-(defun unix-msecs-to-universal (unix)
-  (+ (/ unix 1000) (encode-universal-time 0 0 0 1 1 1970 0)))
-
 (defun make-input-for-slot (parent slot instance)
   (let ((value (slot-value instance (c2mop:slot-definition-name slot)))
-        (type (strip-or-null-type (c2mop:slot-definition-type slot)))
+        (type (strip-or-null-type (real-type slot)))
         (description (documentation slot T)))
-    (let ((input (cond ((and (listp type) (eql (first type) 'date))
-                        (q+:make-qdatetimeedit (if value
-                                                   (q+:qdatetime-from-msecs-since-epoch
-                                                    (universal-to-unix-msecs value))
-                                                   (q+:qdatetime-current-date-time))
-                                               parent))
+    (let ((input (cond ((eql type 'date)
+                        (let ((input (q+:make-qdateedit parent)))
+                          (setf (q+:date input) (if value
+                                                         (q+:qdate-from-string value (q+:qt.isodate))
+                                                         (q+:qdate-current-date)))
+                          (setf (q+:calendar-popup input) T)
+                          (setf (q+:display-format input) "dd.MM.yyyy")
+                          input))
                        ((and (listp type) (eql (first type) 'file))
                         (make-instance 'file-input :direction (second type)
-                                                   :file-type (cons (third type)
-                                                                    (fourth type))))
+                                                   :file-type (cddr type)))
                        ((subtypep type 'pathname)
                         (make-instance 'file-input))
                        ((subtypep type 'string)
@@ -75,7 +70,9 @@
     (qobject
      (qtypecase value
        ("QDateTime"
-        (unix-msecs-to-universal (q+:to-msecs-since-epoch value)))
+        (q+:to-string value (q+:qt.isodate)))
+       ("QDate"
+        (q+:to-string value (q+:qt.isodate)))
        (T
         (error "Don't know how to coerce ~a to a lisp value." value))))
     (string
@@ -87,7 +84,8 @@
   (loop for (slot . input) in (slot-inputs editor)
         for value = (value input)
         do (setf (slot-value (profile editor) slot)
-                 (coerce-to-lisp value))))
+                 (coerce-to-lisp value)))
+  (profile editor))
 
 (define-widget export-dialog (QDialog)
   ())
@@ -100,16 +98,20 @@
   (setf (q+:size-policy profiles) (values (q+:qsizepolicy.maximum) (q+:qsizepolicy.minimum)))
   (setf (q+:minimum-width profiles) 100)
   (setf (q+:maximum-width profiles) 150)
+  (setf (q+:icon-size profiles) (q+:make-qsize 16 16))
   (dolist (profile (list-export-profiles))
-    (let ((item (q+:make-qlistwidgetitem profiles)))
-      (setf (q+:tool-tip item) (documentation profile 'type))
-      (setf (q+:text item) (label (allocate-instance profile)))
+    (let ((item (q+:make-qlistwidgetitem profiles))
+          (instance (allocate-instance profile)))
+      (setf (q+:tool-tip item) (or (documentation profile 'type) ""))
+      (setf (q+:text item) (label instance))
+      (setf (q+:icon item) (q+:qicon-from-theme (icon instance)))
       (q+:add-item profiles item))))
 
 (define-subwidget (export-dialog scroll) (q+:make-qscrollarea export-dialog)
   (setf (q+:widget-resizable scroll) T))
 
 (define-subwidget (export-dialog layout) (q+:make-qgridlayout export-dialog)
+  (q+:resize export-dialog 500 500)
   (q+:add-widget layout profiles 0 0 4 1)
   (q+:add-widget layout scroll   0 1 4 4)
   (q+:add-widget layout ok       5 3 1 1)
@@ -118,8 +120,11 @@
 (define-slot (export-dialog ok) ()
   (declare (connected ok (clicked)))
   (unless (null-qobject-p (q+:widget scroll))
-    (update-profile (q+:widget scroll))
-    (q+:accept export-dialog)))
+    (if (profile-complete-p (update-profile (q+:widget scroll)))
+        (q+:accept export-dialog)
+        (q+:qmessagebox-critical
+         *main* "Cannot Export" "Please fill out all required information in the export profile."
+         (q+:qmessagebox.ok)))))
 
 (define-slot (export-dialog cancel) ()
   (declare (connected cancel (clicked)))

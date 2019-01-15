@@ -35,7 +35,8 @@
                :cl-markless-markdown
                :cl-ppcre
                :cl-who
-               :closer-mop)
+               :closer-mop
+               :qtools-ui-bytearray)
   :build-operation "qt-program-op"
   :build-pathname "markless-studio"
   :entry-point "markless-studio:start")

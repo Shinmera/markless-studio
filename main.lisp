@@ -9,6 +9,26 @@
 
 (defvar *main*)
 
+(defun save-geometry (main)
+  (let ((bytes (qui:from-byte-array (q+:save-geometry main)))
+        (file (make-pathname :name "state" :type "dat" :defaults (config-file))))
+    (ensure-directories-exist file)
+    (with-open-file (stream file :direction :output
+                                 :element-type '(unsigned-byte 8)
+                                 :if-exists :supersede)
+      (write-sequence bytes stream))))
+
+(defun restore-geometry (main)
+  (let ((file (make-pathname :name "state" :type "dat" :defaults (config-file))))
+    (with-open-file (stream file :direction :input
+                                 :element-type '(unsigned-byte 8)
+                                 :if-does-not-exist NIL)
+      (when file
+        (let ((vector (make-array (file-length stream) :element-type '(unsigned-byte 8))))
+          (read-sequence vector stream)
+          (with-finalizing ((bytes (qui:to-byte-array vector)))
+            (q+:restore-geometry main bytes)))))))
+
 (defun start ()
   (with-main-window (*main* 'main :name "Markless Studio")))
 
@@ -23,6 +43,7 @@
 
 (define-initializer (main setup)
   (setf *main* main)
+  (restore-geometry main)
   (make-emacs-keytable (keytable main))
   (load-config main)
   (q+:install-event-filter *qapplication* main))
@@ -53,8 +74,6 @@
     (dolist (condition conditions)
       (markup-condition editor condition))))
 
-(define-condition quit () ())
-
 (define-override (main event-filter) (_ ev)
   (declare (ignore _))
   (when (and (not (keytable-suppressed-p main))
@@ -62,9 +81,15 @@
                  (enum-equal (q+:type ev) (q+:qevent.key-release))))
     (handle-keychord-events main (cast "QKeyEvent" ev))))
 
+(define-override (main close-event) (ev)
+  (save-geometry main)
+  (stop-overriding))
+
 (defun find-any (items sequence)
   (loop for item in sequence
         thereis (find item items)))
+
+(define-condition quit () ())
 
 (defmethod handle-keychord-events ((main main) ev)
   (let ((dir (qtenumcase (q+:type ev)
@@ -177,8 +202,9 @@
   (:item "&Settings"))
 
 (define-menu (main help "&Help")
+  (:item "&Help" (help))
   (:item "&About" (about))
-  (:item "&Help" (help)))
+  (:item "About &Qt" (q+:qmessagebox-about-qt main "About Qt")))
 
 (defun help ()
   (q+:qdesktopservices-open-url (q+:make-qurl "https://shinmera.github.io/markless-studio")))
@@ -186,21 +212,21 @@
 (defun about ()
   (let ((studio (asdf:find-system :markless-studio))
         (implementation (asdf:find-system :cl-markless)))
-    (with-finalizing ((box (q+:make-qmessagebox)))
-      (setf (q+:window-title box) "About Markless-Studio")
-      (setf (q+:text box) (cl-who:with-html-output-to-string (_)
-                            (:h1 "Markless Studio")
-                            (:p (cl-who:str (asdf:system-description studio)))
-                            (:p "The source code is openly available and licensed under the "
-                                (cl-who:str (asdf:system-license studio))
-                                " licence.")
-                            (:p "Homepage: " (cl-who:str (asdf:system-homepage studio)) (:br)
-                                "Author: " (cl-who:str (asdf:system-author studio)) (:br)
-                                "Version: " (cl-who:str (asdf:component-version studio)) (:br)
-                                "Cl-Markless: " (cl-who:str (asdf:component-version implementation)) (:br)
-                                "Lisp: " (cl-who:str (lisp-implementation-type))
-                                " " (cl-who:str (lisp-implementation-version)))))
-      (q+:exec box))))
+    (q+:qmessagebox-about
+     (if (boundp '*main*) *main* (null-qobject "QWidget"))
+     "About Markless-Studio"
+     (cl-who:with-html-output-to-string (_)
+       (:h1 "Markless Studio")
+       (:p (cl-who:str (asdf:system-description studio)))
+       (:p "The source code is openly available and licensed under the "
+           (cl-who:str (asdf:system-license studio))
+           " licence.")
+       (:p "Homepage: " (cl-who:str (asdf:system-homepage studio)) (:br)
+           "Author: " (cl-who:str (asdf:system-author studio)) (:br)
+           "Version: " (cl-who:str (asdf:component-version studio)) (:br)
+           "Cl-Markless: " (cl-who:str (asdf:component-version implementation)) (:br)
+           "Lisp: " (cl-who:str (lisp-implementation-type))
+           " " (cl-who:str (lisp-implementation-version)))))))
 
 (defun describe-key (key)
   (with-finalizing ((box (q+:make-qmessagebox)))
@@ -256,3 +282,4 @@
     table))
 
 ;; FIXME: key listing
+;; FIXME: settings
