@@ -5,6 +5,7 @@
 |#
 
 (in-package #:org.shirakumo.markless.studio)
+(in-readtable :qtools)
 
 (defun config-directory ()
   #+(or windows win32 mswindows)

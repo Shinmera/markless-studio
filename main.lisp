@@ -118,7 +118,8 @@
 
 (defmethod open-mess ((null null) (target pathname))
   (cond ((uiop:argv0)
-         (uiop:launch-program (list (uiop:argv0) target)))
+         (uiop:launch-program (list (uiop:argv0)
+                                    (uiop:native-namestring target))))
         (T
          (open-mess *main* target))))
 

@@ -14,10 +14,13 @@
   (setf (q+:open-external-links viewer) T)
   (setf (q+:style-sheet viewer) "*{background: white; color: black; font-size: 12pt;}ul p{margin: 0}"))
 
+(defun document-relative-file (file)
+  (truename (merge-pathnames file (or (source-file *main*) *default-pathname-defaults*))))
+
 (define-override (viewer load-resource) (type name)
   (or (when (= type (q+:qtextdocument.image-resource))
         (ignore-errors
-         (q+:make-qimage (truename (q+:to-local-file name)))))
+         (q+:make-qimage (uiop:native-namestring (document-relative-file (q+:to-local-file name))))))
       (stop-overriding)))
 
 (defmethod (setf content) ((ast cl-markless-components:component) (viewer viewer))
@@ -50,3 +53,7 @@
                      :size (* 12 (cl-markless-components:size ast))
                      :unit :pt)
       ast))
+
+(defmethod fixup ((ast cl-markless-components:embed) (viewer viewer))
+  (make-instance 'cl-markless-components:paragraph
+                 :children (vector ast)))

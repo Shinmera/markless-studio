@@ -40,6 +40,7 @@
                :cl-who
                :closer-mop
                :qtools-ui-bytearray)
+  :defsystem-depends-on (:qtools)
   :build-operation "qt-program-op"
   :build-pathname "markless-studio"
   :entry-point "markless-studio:start")
