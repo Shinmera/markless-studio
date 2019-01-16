@@ -240,6 +240,7 @@
 
 (defmethod reset ((table keychord-table))
   (mapc #'reset (keychords table))
+  (setf (pressed table) ())
   table)
 
 (defmethod install ((keychord keychord) (table keychord-table))
@@ -260,3 +261,7 @@
   (loop for keychord in (keychords table)
         when (keychord= vector (groups keychord))
         return keychord))
+
+(defmethod clear ((table keychord-table))
+  (setf (keychords table) ())
+  (setf (pressed table) ()))

@@ -6,13 +6,16 @@
 
 (in-package #:org.shirakumo.markless.studio)
 
-(defun config-file ()
+(defun config-directory ()
   #+(or windows win32 mswindows)
-  (merge-pathnames (make-pathname :name "config" :type "lisp" :directory '(:relative "AppData" "Local" "markless-studio"))
+  (merge-pathnames (make-pathname :directory '(:relative "AppData" "Local" "markless-studio"))
                    (user-homedir-pathname))
   #-(or windows win32 mswindows)
-  (merge-pathnames (make-pathname :name "config" :type "lisp" :directory '(:relative ".config" "markless-studio"))
+  (merge-pathnames (make-pathname :directory '(:relative ".config" "markless-studio"))
                    (user-homedir-pathname)))
+
+(defun config-file (&optional name type)
+  (make-pathname :name name :type type :defaults (config-directory)))
 
 (defmacro define-key (chord &body body)
   (cond ((symbolp (first body))
@@ -30,7 +33,7 @@
              ,@maps
              (T key)))))
 
-(defun load-config (main &optional (file (config-file)))
+(defun load-config (main &optional (file (config-file "config" "lisp")))
   (with-open-file (stream file :if-does-not-exist NIL)
     (if stream
         (with-standard-io-syntax

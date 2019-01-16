@@ -7,14 +7,6 @@
 (in-package #:org.shirakumo.markless.studio)
 (in-readtable :qtools)
 
-(defun read-safely (string &optional (package #.*package*))
-  (with-standard-io-syntax
-    (let ((*package* (etypecase package
-                       ((or symbol string) (find-package package))
-                       (package package)))
-          (*read-eval* NIL))
-      (read-from-string string))))
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun command-name (name)
     (intern (string name) '#:org.shirakumo.markless.studio.commands)))
@@ -28,6 +20,9 @@
          (with-slots ,slots ,main
            ,@body)))))
 
+(defun call-command (name main)
+  (funcall (command-name name) main))
+
 (define-editor-command quit ()
   "Abort the current command."
   (signal 'quit))
@@ -38,8 +33,7 @@
 
 (define-editor-command new-file (main editor)
   "Clear the editor and start a new file."
-  (setf (source-file main) NIL)
-  (q+:clear editor))
+  (open-mess main :new))
 
 (define-editor-command save-file (main)
   "Save the current file."
@@ -154,3 +148,7 @@
       (if (fboundp command)
           (describe-command command)
           (message status "The command ~a is not defined." string)))))
+
+(define-editor-command show-settings (main)
+  "Show the settings configuration dialog."
+  (settings))

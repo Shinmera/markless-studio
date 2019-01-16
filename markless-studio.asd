@@ -10,11 +10,12 @@
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "An application for writing and publishing Markless documents."
-  :homepage "https://Shinmera.github.io/markless-studio/"
+  :homepage "https://shinmera.github.io/markless-studio/"
   :bug-tracker "https://github.com/Shinmera/markless-studio/issues"
   :source-control (:git "https://github.com/Shinmera/markless-studio.git")
   :serial T
   :components ((:file "package")
+               (:file "toolkit")
                (:file "keychords")
                (:file "key-table")
                (:file "file-dialog")
@@ -25,6 +26,7 @@
                (:file "status")
                (:file "commands")
                (:file "config")
+               (:file "settings")
                (:file "main"))
   :depends-on (:qtools
                :qtcore

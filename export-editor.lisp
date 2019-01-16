@@ -7,14 +7,6 @@
 (in-package #:org.shirakumo.markless.studio)
 (in-readtable :qtools)
 
-(defun strip-or-null-type (type)
-  (if (and (listp type) (eq 'or (first type)))
-      (let ((type (remove 'null type)))
-        (if (cddr type)
-            type
-            (second type)))
-      type))
-
 (define-widget export-editor (QWidget)
   ((profile :accessor profile)
    (slot-inputs :initform () :accessor slot-inputs)))
@@ -65,21 +57,6 @@
       (setf (q+:tool-tip input) description)
       input)))
 
-(defun coerce-to-lisp (value)
-  (typecase value
-    (qobject
-     (qtypecase value
-       ("QDateTime"
-        (q+:to-string value (q+:qt.isodate)))
-       ("QDate"
-        (q+:to-string value (q+:qt.isodate)))
-       (T
-        (error "Don't know how to coerce ~a to a lisp value." value))))
-    (string
-     (when (string/= "" value)
-       value))
-    (T value)))
-
 (defmethod update-profile ((editor export-editor))
   (loop for (slot . input) in (slot-inputs editor)
         for value = (value input)
@@ -90,9 +67,9 @@
 (define-widget export-dialog (QDialog)
   ())
 
-(define-subwidget (export-dialog ok) (q+:make-qpushbutton "Ok" export-dialog))
+(define-subwidget (export-dialog ok) (q+:make-qpushbutton "&Ok" export-dialog))
 
-(define-subwidget (export-dialog cancel) (q+:make-qpushbutton "Cancel" export-dialog))
+(define-subwidget (export-dialog cancel) (q+:make-qpushbutton "&Cancel" export-dialog))
 
 (define-subwidget (export-dialog profiles) (q+:make-qlistwidget export-dialog)
   (setf (q+:size-policy profiles) (values (q+:qsizepolicy.maximum) (q+:qsizepolicy.minimum)))

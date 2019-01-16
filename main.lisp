@@ -7,11 +7,9 @@
 (in-package #:org.shirakumo.markless.studio)
 (in-readtable :qtools)
 
-(defvar *main*)
-
 (defun save-geometry (main)
   (let ((bytes (qui:from-byte-array (q+:save-geometry main)))
-        (file (make-pathname :name "state" :type "dat" :defaults (config-file))))
+        (file (config-file "window-state" "dat")))
     (ensure-directories-exist file)
     (with-open-file (stream file :direction :output
                                  :element-type '(unsigned-byte 8)
@@ -19,11 +17,11 @@
       (write-sequence bytes stream))))
 
 (defun restore-geometry (main)
-  (let ((file (make-pathname :name "state" :type "dat" :defaults (config-file))))
+  (let ((file (config-file "window-state" "dat")))
     (with-open-file (stream file :direction :input
                                  :element-type '(unsigned-byte 8)
                                  :if-does-not-exist NIL)
-      (when file
+      (when stream
         (let ((vector (make-array (file-length stream) :element-type '(unsigned-byte 8))))
           (read-sequence vector stream)
           (with-finalizing ((bytes (qui:to-byte-array vector)))
@@ -46,6 +44,8 @@
   (restore-geometry main)
   (make-emacs-keytable (keytable main))
   (load-config main)
+  (when (and uiop:*image-dumped-p* (uiop:command-line-arguments))
+    (open-mess main (first (uiop:command-line-arguments))))
   (q+:install-event-filter *qapplication* main))
 
 (define-finalizer (main teardown)
@@ -85,12 +85,6 @@
   (save-geometry main)
   (stop-overriding))
 
-(defun find-any (items sequence)
-  (loop for item in sequence
-        thereis (find item items)))
-
-(define-condition quit () ())
-
 (defmethod handle-keychord-events ((main main) ev)
   (let ((dir (qtenumcase (q+:type ev)
                ((q+:qevent.key-press) :dn)
@@ -120,6 +114,18 @@
       (error (condition)
         (push condition conditions)
         (values NIL (nreverse conditions))))))
+
+(defmethod open-mess ((null null) (target pathname))
+  (cond ((uiop:argv0)
+         (uiop:launch-program (list (uiop:argv0) target)))
+        (T
+         (open-mess *main* target))))
+
+(defmethod open-mess ((main main) (target (eql :new)))
+  (if (probe-file (config-file "template" "mess"))
+      (open-mess main (config-file "template" "mess"))
+      (q+:clear (slot-value main 'editor)))
+  (setf (source-file main) NIL))
 
 (defmethod open-mess ((main main) (target (eql NIL)))
   (let ((file (open-file :input)))
@@ -199,12 +205,17 @@
   (:item "&Paste"
     (q+:paste editor))
   (:separator)
-  (:item "&Settings"))
+  (:item "&Settings"
+    (settings)))
 
 (define-menu (main help "&Help")
   (:item "&Help" (help))
   (:item "&About" (about))
   (:item "About &Qt" (q+:qmessagebox-about-qt main "About Qt")))
+
+(defun settings ()
+  (with-finalizing ((settings (make-instance 'settings)))
+    (q+:exec settings)))
 
 (defun help ()
   (q+:qdesktopservices-open-url (q+:make-qurl "https://shinmera.github.io/markless-studio")))
@@ -221,7 +232,7 @@
        (:p "The source code is openly available and licensed under the "
            (cl-who:str (asdf:system-license studio))
            " licence.")
-       (:p "Homepage: " (cl-who:str (asdf:system-homepage studio)) (:br)
+       (:p "Homepage: " (:a :href (asdf:system-homepage studio) (cl-who:str (asdf:system-homepage studio))) (:br)
            "Author: " (cl-who:str (asdf:system-author studio)) (:br)
            "Version: " (cl-who:str (asdf:component-version studio)) (:br)
            "Cl-Markless: " (cl-who:str (asdf:component-version implementation)) (:br)
@@ -280,6 +291,3 @@
     (def "C-h k" describe-key)
     (def "C-h c" describe-command)
     table))
-
-;; FIXME: key listing
-;; FIXME: settings
