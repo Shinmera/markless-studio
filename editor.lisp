@@ -135,6 +135,8 @@
   (let ((r (q+:contents-rect editor)))
     (setf (q+:geometry line-number-area) (q+:make-qrect (q+:left r) (q+:top r) (round (margin editor)) (q+:height r)))))
 
+;; FIXME: add methods for cursor movements that respect in-selection
+
 (define-override (editor key-press-event) (ev)
   (cond (in-selection
          (let ((cursor (q+:text-cursor editor)))

@@ -19,6 +19,7 @@
                (:file "keychords")
                (:file "key-table")
                (:file "file-dialog")
+               (:file "input-widgets")
                (:file "export")
                (:file "export-editor")
                (:file "viewer")

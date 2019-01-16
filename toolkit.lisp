@@ -45,3 +45,7 @@
      (when (string/= "" value)
        value))
     (T value)))
+
+(defun starts-with (start string)
+  (and (<= (length start) (length string))
+       (string= start string :end2 (length start))))

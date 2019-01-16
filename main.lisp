@@ -44,8 +44,9 @@
   (restore-geometry main)
   (make-emacs-keytable (keytable main))
   (load-config main)
-  (when (and uiop:*image-dumped-p* (uiop:command-line-arguments))
-    (open-mess main (first (uiop:command-line-arguments))))
+  (if (and uiop:*image-dumped-p* (uiop:command-line-arguments))
+      (open-mess main (first (uiop:command-line-arguments)))
+      (open-mess main :new))
   (q+:install-event-filter *qapplication* main))
 
 (define-finalizer (main teardown)
@@ -215,7 +216,8 @@
 
 (defun settings ()
   (with-finalizing ((settings (make-instance 'settings)))
-    (q+:exec settings)))
+    (when (< 0 (q+:exec settings))
+      (save-config *main*))))
 
 (defun help ()
   (q+:qdesktopservices-open-url (q+:make-qurl "https://shinmera.github.io/markless-studio")))
