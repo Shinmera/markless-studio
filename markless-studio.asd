@@ -1,14 +1,8 @@
-#|
- This file is a part of markless-studio
- (c) 2019 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
- Author: Nicolas Hafner <shinmera@tymoon.eu>
-|#
-
 (asdf:defsystem markless-studio
   :version "1.0.0"
   :license "zlib"
-  :author "Nicolas Hafner <shinmera@tymoon.eu>"
-  :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
+  :author "Yukari Hafner <shinmera@tymoon.eu>"
+  :maintainer "Yukari Hafner <shinmera@tymoon.eu>"
   :description "An application for writing and publishing Markless documents."
   :homepage "https://shinmera.github.io/markless-studio/"
   :bug-tracker "https://github.com/Shinmera/markless-studio/issues"
